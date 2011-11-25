@@ -197,6 +197,10 @@ EOF
             \$this->class->reflFields['%2\$s']->setValue(\$document, \$return);
             \$hydratedData['%2\$s'] = \$return;
         }
+        else
+        {
+            \$hydratedData['%2\$s'] = null;
+        }
 
 EOF
                 ,
