@@ -500,6 +500,8 @@ class UnitOfWork implements PropertyChangedListener
                 $coll->setDirty( ! $value->isEmpty());
                 $class->reflFields[$name]->setValue($document, $coll);
                 $actualData[$name] = $coll;
+            } else if ( $class->isSingleValuedEmbed($name) ) {
+                $actualData[$name] = $this->getDocumentActualData($value);
             } else if ( ! $class->isIdentifier($name) || $class->isIdGeneratorNone()) {
                 $actualData[$name] = $value;
             }
@@ -557,10 +559,19 @@ class UnitOfWork implements PropertyChangedListener
             $changeSet = $isChangeTrackingNotify ? $this->documentChangeSets[$oid] : array();
 
             foreach ($actualData as $propName => $actualValue) {
-                $orgValue = isset($originalData[$propName]) ? $originalData[$propName] : null;
+                if(isset($class->fieldMappings[$propName]['embedded']) && $class->fieldMappings[$propName]['type'] === 'one')
+                {
+                    $embeddedOid = spl_object_hash($class->reflFields[$propName]->getValue($document));
+                    $orgValue = isset($this->originalDocumentData[$embeddedOid])?$this->originalDocumentData[$embeddedOid]:null;
+                }
+                else
+                {
+                    $orgValue = isset($originalData[$propName]) ? $originalData[$propName] : null;
+                }
+
                 if (isset($class->fieldMappings[$propName]['embedded']) && $class->fieldMappings[$propName]['type'] === 'one' && $orgValue !== $actualValue) {
                     if ($orgValue !== null) {
-                        $this->scheduleOrphanRemoval($orgValue);
+                        $this->scheduleOrphanRemoval($class->reflFields[$propName]->getValue($document));
                     }
                     $changeSet[$propName] = array($orgValue, $actualValue);
                 } else if (isset($class->fieldMappings[$propName]['reference']) && $class->fieldMappings[$propName]['type'] === 'one' && $class->fieldMappings[$propName]['isOwningSide'] && $orgValue !== $actualValue) {
